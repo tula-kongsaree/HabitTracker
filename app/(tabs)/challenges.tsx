@@ -496,7 +496,12 @@ export default function ChallengesScreen() {
             {habits.length === 0 ? (
               <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Add habits on the Today tab first</ThemedText>
             ) : (
-              <View style={styles.habitPickerList}>
+              <ScrollView
+                style={{ maxHeight: 220 }}
+                contentContainerStyle={styles.habitPickerList}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
                 {habits.map((h) => {
                   const sel = selectedHabitIds.includes(h.id);
                   return (
@@ -510,7 +515,7 @@ export default function ChallengesScreen() {
                     </Pressable>
                   );
                 })}
-              </View>
+              </ScrollView>
             )}
 
             <Pressable

@@ -90,10 +90,7 @@ export function getStreak(habit: Habit): number {
 
 export function getChallengeProgress(challenge: Challenge, habits: Habit[]): number {
   const start = new Date(challenge.startDate + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const elapsed = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  const daysToCheck = Math.min(Math.max(elapsed + 1, 0), challenge.durationDays);
+  const daysToCheck = challenge.durationDays;
 
   let completed = 0;
   const total = challenge.habitIds.length * challenge.durationDays;
