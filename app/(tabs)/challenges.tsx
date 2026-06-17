@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -418,6 +420,7 @@ export default function ChallengesScreen() {
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setModalVisible(false)} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
           <ThemedText type="subtitle" style={styles.sheetTitle}>New Challenge</ThemedText>
 
@@ -492,6 +495,7 @@ export default function ChallengesScreen() {
             </Text>
           </Pressable>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
