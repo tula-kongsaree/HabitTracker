@@ -1,16 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { router, Stack, useRootNavigationState } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { HabitsProvider } from '@/context/habits-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-// Keep splash visible until we know whether to show onboarding or tabs
-SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -22,11 +18,7 @@ function OnboardingGate() {
   useEffect(() => {
     if (!navState?.key) return;
     AsyncStorage.getItem('onboarded_v2').then((val) => {
-      if (!val) {
-        router.replace('/onboarding');
-      }
-      // Hide splash whether we redirected or not
-      SplashScreen.hideAsync();
+      if (!val) router.navigate('/onboarding');
     });
   }, [navState?.key]);
 
