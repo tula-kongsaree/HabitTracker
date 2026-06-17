@@ -52,10 +52,10 @@ function isChallengeComplete(challenge: Challenge, progress: number): boolean {
   return elapsed >= challenge.durationDays - 1 && progress >= 1;
 }
 
-// ─── SVG Progress Ring (animated from 0 on mount) ─────────────────────────────
+// ─── SVG Progress Ring ─────────────────────────────────────────────────────────
 
-function ProgressRing({ progress, size, color, label }: {
-  progress: number; size: number; color: string; label: string;
+function ProgressRing({ progress, size, color }: {
+  progress: number; size: number; color: string;
 }) {
   const [animPct, setAnimPct] = useState(0);
 
@@ -64,7 +64,6 @@ function ProgressRing({ progress, size, color, label }: {
     let rafId: number;
     const start = Date.now();
     const duration = 1000;
-
     const tick = () => {
       const elapsed = Date.now() - start;
       const t = Math.min(elapsed / duration, 1);
@@ -72,7 +71,6 @@ function ProgressRing({ progress, size, color, label }: {
       setAnimPct(eased * target);
       if (t < 1) rafId = requestAnimationFrame(tick);
     };
-
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
   }, [progress]);
@@ -85,22 +83,13 @@ function ProgressRing({ progress, size, color, label }: {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(150,150,150,0.25)" strokeWidth={strokeWidth} fill="none" />
         <Circle
           cx={size / 2} cy={size / 2} r={radius}
-          stroke="rgba(150,150,150,0.25)"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2} cy={size / 2} r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
+          stroke={color} strokeWidth={strokeWidth} fill="none"
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2},${size / 2}`}
+          strokeLinecap="round" rotation="-90" origin={`${size / 2},${size / 2}`}
         />
       </Svg>
       <Text style={{ fontSize: size * 0.2, fontWeight: '700', color }}>
@@ -110,117 +99,87 @@ function ProgressRing({ progress, size, color, label }: {
   );
 }
 
-// ─── 3-Dot Menu Sheet ─────────────────────────────────────────────────────────
+// ─── Duration Wheel ────────────────────────────────────────────────────────────
 
-function ChallengeMenuSheet({ challenge, scheme, onClose }: {
-  challenge: Challenge;
-  scheme: 'light' | 'dark';
-  onClose: () => void;
+const DURATION_OPTS = [3, 5, 7, 10, 14, 21, 30, 45, 60, 90];
+const WHEEL_H = 48;
+
+function DurationWheel({ value, onChange, scheme }: {
+  value: number; onChange: (v: number) => void; scheme: 'light' | 'dark';
 }) {
-  const { deleteChallenge, updateChallengeDuration } = useHabits();
   const colors = Colors[scheme];
-  const sheetBg = scheme === 'dark' ? '#1C1C1E' : '#F2F2F7';
-  const cardBg = scheme === 'dark' ? '#2C2C2E' : '#FFFFFF';
-  const [editMode, setEditMode] = useState(false);
-  const [newDuration, setNewDuration] = useState(challenge.durationDays);
+  const scrollRef = useRef<ScrollView>(null);
+  const initIdx = DURATION_OPTS.indexOf(value);
+  const [centeredIdx, setCenteredIdx] = useState(initIdx >= 0 ? initIdx : 2);
 
-  function handleDelete() {
-    deleteChallenge(challenge.id);
-    onClose();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-  }
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: centeredIdx * WHEEL_H, animated: false });
+  }, []);
 
-  function handleSaveDuration() {
-    updateChallengeDuration(challenge.id, newDuration);
-    onClose();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  function handleScroll(e: any) {
+    const i = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.y / WHEEL_H), DURATION_OPTS.length - 1));
+    setCenteredIdx(i);
+    onChange(DURATION_OPTS[i]);
   }
 
   return (
-    <View style={[menuStyles.sheet, { backgroundColor: sheetBg }]}>
-      <View style={[menuStyles.handle, { backgroundColor: colors.icon }]} />
-      <ThemedText type="subtitle" style={{ textAlign: 'center' }}>{challenge.name}</ThemedText>
-
-      {!editMode ? (
-        <>
-          <Pressable style={[menuStyles.option, { backgroundColor: cardBg }]} onPress={() => setEditMode(true)}>
-            <Text style={[menuStyles.optionIcon, { color: colors.tint }]}>✏️</Text>
-            <Text style={[menuStyles.optionText, { color: colors.text }]}>Edit Duration</Text>
-          </Pressable>
-
-          <Pressable style={[menuStyles.option, menuStyles.dangerOption]} onPress={handleDelete}>
-            <Text style={menuStyles.optionIcon}>🗑️</Text>
-            <Text style={[menuStyles.optionText, menuStyles.dangerText]}>Delete Challenge</Text>
-          </Pressable>
-
-          <Pressable style={[menuStyles.cancelBtn, { backgroundColor: cardBg }]} onPress={onClose}>
-            <Text style={[menuStyles.cancelText, { color: colors.text }]}>Cancel</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <ThemedText style={{ color: colors.icon, fontSize: 13, textAlign: 'center' }}>
-            New duration (days)
-          </ThemedText>
-          <View style={menuStyles.durationRow}>
-            {[3, 7, 14, 21, 30].map((d) => (
-              <Pressable
-                key={d}
-                onPress={() => setNewDuration(d)}
-                style={[
-                  menuStyles.durationBtn,
-                  { backgroundColor: cardBg },
-                  newDuration === d && { backgroundColor: colors.tint },
-                ]}>
-                <Text style={[menuStyles.durationText, {
-                  color: newDuration === d ? (scheme === 'dark' ? '#151718' : '#fff') : colors.text,
-                }]}>{d}d</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={menuStyles.editActions}>
-            <Pressable style={[menuStyles.cancelBtn, { backgroundColor: cardBg, flex: 1 }]} onPress={() => setEditMode(false)}>
-              <Text style={[menuStyles.cancelText, { color: colors.text }]}>Back</Text>
-            </Pressable>
-            <Pressable style={[menuStyles.saveBtn, { backgroundColor: colors.tint, flex: 1 }]} onPress={handleSaveDuration}>
-              <Text style={[menuStyles.saveBtnText, { color: scheme === 'dark' ? '#151718' : '#fff' }]}>Save</Text>
-            </Pressable>
-          </View>
-        </>
-      )}
+    <View style={dwStyles.wrapper}>
+      <View
+        pointerEvents="none"
+        style={[dwStyles.band, { top: WHEEL_H * 2, borderColor: colors.tint, backgroundColor: `${colors.tint}18` }]}
+      />
+      <ScrollView
+        ref={scrollRef}
+        style={{ height: WHEEL_H * 5 }}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_H}
+        decelerationRate="fast"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingVertical: WHEEL_H * 2 }}
+      >
+        {DURATION_OPTS.map((d, i) => {
+          const dist = Math.abs(i - centeredIdx);
+          const isCentered = i === centeredIdx;
+          return (
+            <View key={d} style={{ height: WHEEL_H, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{
+                fontSize: isCentered ? 22 : 17,
+                fontWeight: isCentered ? '700' : '400',
+                color: colors.text,
+                opacity: dist === 0 ? 1 : dist === 1 ? 0.5 : dist === 2 ? 0.2 : 0.08,
+              }}>
+                {d} days
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
 
-const menuStyles = StyleSheet.create({
-  sheet: { padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 10, paddingBottom: 32 },
-  handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', opacity: 0.3, marginBottom: 4 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 14 },
-  optionIcon: { fontSize: 20 },
-  optionText: { fontSize: 16, fontWeight: '500' },
-  dangerOption: { backgroundColor: '#FF3B3015' },
-  dangerText: { color: '#FF3B30' },
-  cancelBtn: { padding: 16, borderRadius: 14, alignItems: 'center' },
-  cancelText: { fontSize: 16, fontWeight: '600' },
-  durationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  durationBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center' },
-  durationText: { fontWeight: '700', fontSize: 15 },
-  editActions: { flexDirection: 'row', gap: 10 },
-  saveBtn: { padding: 16, borderRadius: 14, alignItems: 'center' },
-  saveBtnText: { fontSize: 16, fontWeight: '700' },
+const dwStyles = StyleSheet.create({
+  wrapper: { position: 'relative', overflow: 'hidden', borderRadius: 12 },
+  band: { position: 'absolute', left: 0, right: 0, height: WHEEL_H, borderTopWidth: 1, borderBottomWidth: 1, zIndex: 1 },
 });
 
-// ─── Challenge Card ───────────────────────────────────────────────────────────
+// ─── Challenge Card ────────────────────────────────────────────────────────────
 
 function ChallengeCard({ challenge, scheme, onFireCelebration }: {
-  challenge: Challenge;
-  scheme: 'light' | 'dark';
-  onFireCelebration: () => void;
+  challenge: Challenge; scheme: 'light' | 'dark'; onFireCelebration: () => void;
 }) {
-  const { habits, completeChallenge } = useHabits();
+  const { habits, completeChallenge, deleteChallenge, updateChallengeDuration } = useHabits();
   const colors = Colors[scheme];
   const cardBg = scheme === 'dark' ? '#1C1C1E' : '#F2F2F7';
+  const dividerColor = scheme === 'dark' ? '#3A3A3C' : '#E5E5EA';
+  const btnBg = scheme === 'dark' ? '#2C2C2E' : '#E5E5EA';
+
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editDurationOpen, setEditDurationOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [wheelDuration, setWheelDuration] = useState(challenge.durationDays);
+
   const didFire = useRef(false);
 
   const progress = getChallengeProgress(challenge, habits);
@@ -252,37 +211,48 @@ function ChallengeCard({ challenge, scheme, onFireCelebration }: {
     transform: [{ scale: badgeScale.value }],
   }));
 
-  const habitNames = challenge.habitIds
+  const habitEmojis = challenge.habitIds
     .map((id) => habits.find((h) => h.id === id)?.emoji ?? '')
     .join(' ');
 
   const ringColor = challenge.completedAt ? '#4CAF50' : colors.tint;
-  const pctLabel = `${Math.round(progress * 100)}%`;
 
-  // Status text for habit pills — clarifies it's today's status, not challenge-long
-  const todayStatusLabel = (done: boolean) => done ? 'Today ✓' : 'Today —';
+  function handleMenuToggle() {
+    if (menuOpen) setEditDurationOpen(false);
+    setMenuOpen(m => !m);
+  }
+
+  function handleSaveDuration() {
+    updateChallengeDuration(challenge.id, wheelDuration);
+    setEditDurationOpen(false);
+    setMenuOpen(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
+
+  function handleDeleteYes() {
+    setConfirmDeleteOpen(false);
+    deleteChallenge(challenge.id);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  }
 
   return (
     <>
-      <Animated.View style={[styles.challengeCard, { backgroundColor: cardBg }, animatedCard]}>
-        <Pressable style={styles.dotMenuBtn} onPress={() => setMenuOpen(true)}>
-          <Text style={[styles.dotMenuIcon, { color: colors.icon }]}>⋮</Text>
-        </Pressable>
+      <Animated.View style={[cStyles.card, { backgroundColor: cardBg }, animatedCard]}>
 
+        {/* Completed badge */}
         {challenge.completedAt && (
-          <Animated.View style={[styles.completedBadge, animatedBadge]}>
-            <Text style={styles.completedBadgeText}>🏆 Completed!</Text>
+          <Animated.View style={[cStyles.completedBadge, animatedBadge]}>
+            <Text style={cStyles.completedBadgeText}>🏆 Completed!</Text>
           </Animated.View>
         )}
 
-        <View style={styles.challengeTop}>
-          <ProgressRing progress={progress} size={72} color={ringColor} label={pctLabel} />
-          <View style={styles.challengeInfo}>
-            <ThemedText type="defaultSemiBold" style={styles.challengeName}>
-              {challenge.name}
-            </ThemedText>
-            <Text style={[styles.challengeMeta, { color: colors.icon }]}>{habitNames}</Text>
-            <Text style={[styles.challengeMeta, { color: colors.icon }]}>
+        {/* Main row: ring + info */}
+        <View style={cStyles.cardMain}>
+          <ProgressRing progress={progress} size={72} color={ringColor} />
+          <View style={cStyles.challengeInfo}>
+            <ThemedText type="defaultSemiBold" style={cStyles.challengeName}>{challenge.name}</ThemedText>
+            <Text style={[cStyles.challengeMeta, { color: colors.icon }]}>{habitEmojis}</Text>
+            <Text style={[cStyles.challengeMeta, { color: colors.icon }]}>
               {challenge.completedAt
                 ? `Finished on ${challenge.completedAt}`
                 : remaining === 0
@@ -292,47 +262,122 @@ function ChallengeCard({ challenge, scheme, onFireCelebration }: {
           </View>
         </View>
 
-        <View style={styles.habitStatusRow}>
+        {/* Today habit status pills */}
+        <View style={cStyles.habitStatusRow}>
           {challenge.habitIds.map((id) => {
             const habit = habits.find((h) => h.id === id);
             if (!habit) return null;
             const done = isTodayComplete(habit);
             return (
-              <View
-                key={id}
-                style={[
-                  styles.habitStatusPill,
-                  { backgroundColor: done ? '#4CAF5022' : `${colors.icon}22` },
-                ]}>
-                <Text style={styles.habitStatusEmoji}>{habit.emoji}</Text>
-                <Text style={[styles.habitStatusText, { color: done ? '#4CAF50' : colors.icon }]}>
-                  {todayStatusLabel(done)}
+              <View key={id} style={[cStyles.habitStatusPill, { backgroundColor: done ? '#4CAF5022' : `${colors.icon}22` }]}>
+                <Text style={cStyles.habitStatusEmoji}>{habit.emoji}</Text>
+                <Text style={[cStyles.habitStatusText, { color: done ? '#4CAF50' : colors.icon }]}>
+                  {done ? 'Today ✓' : 'Today —'}
                 </Text>
               </View>
             );
           })}
         </View>
+
+        {/* Dropdown toggle — same design as habit cards */}
+        <Pressable onPress={handleMenuToggle} style={cStyles.menuToggleRow} hitSlop={6}>
+          <Text style={[cStyles.menuArrow, { color: colors.icon }]}>{menuOpen ? '▲' : '▼'}</Text>
+        </Pressable>
+
+        {/* Dropdown: main options */}
+        {menuOpen && !editDurationOpen && (
+          <>
+            <View style={[cStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable onPress={() => setEditDurationOpen(true)} style={cStyles.dropdownBtn}>
+              <Text style={[cStyles.dropdownBtnText, { color: colors.tint }]}>✏️  Edit Duration</Text>
+            </Pressable>
+            <View style={[cStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable onPress={() => { setMenuOpen(false); setConfirmDeleteOpen(true); }} style={cStyles.dropdownBtn}>
+              <Text style={[cStyles.dropdownBtnText, { color: '#FF3B30' }]}>✕  Delete Challenge</Text>
+            </Pressable>
+          </>
+        )}
+
+        {/* Dropdown: duration wheel */}
+        {menuOpen && editDurationOpen && (
+          <>
+            <View style={[cStyles.divider, { backgroundColor: dividerColor }]} />
+            <DurationWheel value={wheelDuration} onChange={setWheelDuration} scheme={scheme} />
+            <View style={cStyles.editActionRow}>
+              <Pressable onPress={() => setEditDurationOpen(false)} style={[cStyles.editBtn, { backgroundColor: btnBg, flex: 1 }]}>
+                <Text style={[cStyles.editBtnText, { color: colors.text }]}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleSaveDuration} style={[cStyles.editBtn, { backgroundColor: colors.tint, flex: 2 }]}>
+                <Text style={[cStyles.editBtnText, { color: scheme === 'dark' ? '#151718' : '#fff' }]}>
+                  Save · {wheelDuration} days
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        )}
       </Animated.View>
 
-      <Modal visible={menuOpen} transparent animationType="slide">
-        <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)} />
-        <ChallengeMenuSheet
-          challenge={challenge}
-          scheme={scheme}
-          onClose={() => setMenuOpen(false)}
-        />
+      {/* Delete confirmation */}
+      <Modal visible={confirmDeleteOpen} transparent animationType="fade">
+        <View style={cStyles.confirmOverlay}>
+          <View style={[cStyles.confirmBox, { backgroundColor: cardBg }]}>
+            <Text style={[cStyles.confirmTitle, { color: colors.text }]}>Delete challenge?</Text>
+            <Text style={[cStyles.confirmBody, { color: colors.icon }]}>
+              "{challenge.name}" will be permanently removed.
+            </Text>
+            <View style={cStyles.confirmBtns}>
+              <Pressable onPress={() => setConfirmDeleteOpen(false)} style={[cStyles.confirmBtn, { backgroundColor: btnBg }]}>
+                <Text style={[cStyles.confirmBtnText, { color: colors.text }]}>No</Text>
+              </Pressable>
+              <Pressable onPress={handleDeleteYes} style={[cStyles.confirmBtn, { backgroundColor: '#FF3B30' }]}>
+                <Text style={[cStyles.confirmBtnText, { color: '#fff' }]}>Yes, Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
 }
 
-// ─── Challenges Screen ────────────────────────────────────────────────────────
+const cStyles = StyleSheet.create({
+  card: { borderRadius: 20, padding: 16, gap: 12 },
+  completedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#4CAF50', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  completedBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  cardMain: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  challengeInfo: { flex: 1, gap: 4 },
+  challengeName: { fontSize: 16 },
+  challengeMeta: { fontSize: 13 },
+  habitStatusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  habitStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },
+  habitStatusEmoji: { fontSize: 16 },
+  habitStatusText: { fontSize: 12, fontWeight: '600' },
+  menuToggleRow: { alignItems: 'center', paddingVertical: 2 },
+  menuArrow: { fontSize: 11, fontWeight: '700' },
+  divider: { height: 1 },
+  dropdownBtn: { paddingVertical: 12 },
+  dropdownBtnText: { fontSize: 14, fontWeight: '600' },
+  editActionRow: { flexDirection: 'row', gap: 10 },
+  editBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  editBtnText: { fontSize: 15, fontWeight: '600' },
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  confirmBox: { borderRadius: 20, padding: 24, gap: 12, width: '100%', maxWidth: 360 },
+  confirmTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  confirmBody: { fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  confirmBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  confirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  confirmBtnText: { fontSize: 16, fontWeight: '600' },
+});
+
+// ─── Challenges Screen ─────────────────────────────────────────────────────────
 
 export default function ChallengesScreen() {
   const { habits, challenges, addChallenge } = useHabits();
   const scheme = (useColorScheme() ?? 'light') as 'light' | 'dark';
   const colors = Colors[scheme];
-
   const cardBg = scheme === 'dark' ? '#1C1C1E' : '#F2F2F7';
   const inputBg = scheme === 'dark' ? '#2C2C2E' : '#FFFFFF';
   const sheetBg = scheme === 'dark' ? '#1C1C1E' : '#F2F2F7';
@@ -415,86 +460,68 @@ export default function ChallengesScreen() {
         </Pressable>
       </SafeAreaView>
 
-      {/* Fire celebration on foreground — rendered outside SafeAreaView */}
       <FireCelebration visible={showFire} />
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setModalVisible(false)} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
-          <ThemedText type="subtitle" style={styles.sheetTitle}>New Challenge</ThemedText>
+          <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
+            <ThemedText type="subtitle" style={styles.sheetTitle}>New Challenge</ThemedText>
 
-          <TextInput
-            style={[styles.input, { backgroundColor: inputBg, color: colors.text, borderColor: colors.background }]}
-            placeholder="Challenge name…"
-            placeholderTextColor={colors.icon}
-            value={challengeName}
-            onChangeText={setChallengeName}
-            autoFocus
-            returnKeyType="done"
-          />
+            <TextInput
+              style={[styles.input, { backgroundColor: inputBg, color: colors.text, borderColor: colors.background }]}
+              placeholder="Challenge name…"
+              placeholderTextColor={colors.icon}
+              value={challengeName}
+              onChangeText={setChallengeName}
+              autoFocus
+              returnKeyType="done"
+            />
 
-          <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Duration</ThemedText>
-          <View style={styles.durationRow}>
-            {DURATIONS.map((d) => (
-              <Pressable
-                key={d}
-                onPress={() => setSelectedDuration(d)}
-                style={[
-                  styles.durationBtn,
-                  { backgroundColor: cardBg },
-                  selectedDuration === d && { backgroundColor: colors.tint },
-                ]}>
-                <Text style={[
-                  styles.durationText,
-                  { color: selectedDuration === d ? (scheme === 'dark' ? '#151718' : '#fff') : colors.text },
-                ]}>
-                  {d}d
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Include habits</ThemedText>
-          {habits.length === 0 ? (
-            <ThemedText style={{ color: colors.icon, fontSize: 13 }}>
-              Add habits on the Today tab first
-            </ThemedText>
-          ) : (
-            <View style={styles.habitPickerList}>
-              {habits.map((h) => {
-                const sel = selectedHabitIds.includes(h.id);
-                return (
-                  <Pressable
-                    key={h.id}
-                    onPress={() => toggleHabit(h.id)}
-                    style={[
-                      styles.habitPickerItem,
-                      { backgroundColor: cardBg },
-                      sel && { backgroundColor: `${colors.tint}33`, borderColor: colors.tint, borderWidth: 1.5 },
-                    ]}>
-                    <Text style={{ fontSize: 18 }}>{h.emoji}</Text>
-                    <ThemedText style={{ fontSize: 14, flex: 1 }} numberOfLines={1}>{h.name}</ThemedText>
-                    {sel && <Text style={{ color: colors.tint, fontWeight: '700' }}>✓</Text>}
-                  </Pressable>
-                );
-              })}
+            <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Duration</ThemedText>
+            <View style={styles.durationRow}>
+              {DURATIONS.map((d) => (
+                <Pressable
+                  key={d}
+                  onPress={() => setSelectedDuration(d)}
+                  style={[styles.durationBtn, { backgroundColor: cardBg }, selectedDuration === d && { backgroundColor: colors.tint }]}>
+                  <Text style={[styles.durationText, { color: selectedDuration === d ? (scheme === 'dark' ? '#151718' : '#fff') : colors.text }]}>
+                    {d}d
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          )}
 
-          <Pressable
-            style={[
-              styles.createBtn,
-              { backgroundColor: colors.tint },
-              (!challengeName.trim() || selectedHabitIds.length === 0) && styles.createBtnDisabled,
-            ]}
-            onPress={handleCreate}
-            disabled={!challengeName.trim() || selectedHabitIds.length === 0}>
-            <Text style={[styles.createBtnText, { color: scheme === 'dark' ? '#151718' : '#fff' }]}>
-              Start {selectedDuration}-Day Challenge
-            </Text>
-          </Pressable>
-        </View>
+            <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Include habits</ThemedText>
+            {habits.length === 0 ? (
+              <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Add habits on the Today tab first</ThemedText>
+            ) : (
+              <View style={styles.habitPickerList}>
+                {habits.map((h) => {
+                  const sel = selectedHabitIds.includes(h.id);
+                  return (
+                    <Pressable
+                      key={h.id}
+                      onPress={() => toggleHabit(h.id)}
+                      style={[styles.habitPickerItem, { backgroundColor: cardBg }, sel && { backgroundColor: `${colors.tint}33`, borderColor: colors.tint, borderWidth: 1.5 }]}>
+                      <Text style={{ fontSize: 18 }}>{h.emoji}</Text>
+                      <ThemedText style={{ fontSize: 14, flex: 1 }} numberOfLines={1}>{h.name}</ThemedText>
+                      {sel && <Text style={{ color: colors.tint, fontWeight: '700' }}>✓</Text>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            <Pressable
+              style={[styles.createBtn, { backgroundColor: colors.tint }, (!challengeName.trim() || selectedHabitIds.length === 0) && styles.createBtnDisabled]}
+              onPress={handleCreate}
+              disabled={!challengeName.trim() || selectedHabitIds.length === 0}>
+              <Text style={[styles.createBtnText, { color: scheme === 'dark' ? '#151718' : '#fff' }]}>
+                Start {selectedDuration}-Day Challenge
+              </Text>
+            </Pressable>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -507,46 +534,22 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 12 },
   header: { gap: 4, paddingTop: 8 },
   sectionLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 1 },
-
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyEmoji: { fontSize: 56 },
-
-  challengeCard: { borderRadius: 20, padding: 16, gap: 14, overflow: 'hidden' },
-  dotMenuBtn: { position: 'absolute', top: 10, right: 12, padding: 8, zIndex: 5 },
-  dotMenuIcon: { fontSize: 22, fontWeight: '700', lineHeight: 24 },
-  completedBadge: {
-    position: 'absolute', top: 12, right: 44,
-    backgroundColor: '#4CAF50', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  completedBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  challengeTop: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  challengeInfo: { flex: 1, gap: 4 },
-  challengeName: { fontSize: 16 },
-  challengeMeta: { fontSize: 13 },
-
-  habitStatusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  habitStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },
-  habitStatusEmoji: { fontSize: 16 },
-  habitStatusText: { fontSize: 12, fontWeight: '600' },
-
   startBtn: {
     position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 18, alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 5,
   },
   startBtnText: { fontWeight: '700', fontSize: 16 },
-
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 14, maxHeight: '85%' },
   sheetTitle: { textAlign: 'center' },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16 },
-
   durationRow: { flexDirection: 'row', gap: 8 },
   durationBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   durationText: { fontWeight: '700', fontSize: 15 },
-
   habitPickerList: { gap: 8 },
   habitPickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent' },
-
   createBtn: { padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
   createBtnDisabled: { opacity: 0.4 },
   createBtnText: { fontWeight: '700', fontSize: 16 },
