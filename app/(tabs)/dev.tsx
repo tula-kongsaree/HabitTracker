@@ -86,11 +86,11 @@ export default function DevScreen() {
   }
 
   async function handleRestartOnboarding() {
-    resetAll();
     await AsyncStorage.removeItem('onboarded_v2');
     await AsyncStorage.removeItem('habits_v4');
     await AsyncStorage.removeItem('challenges_v2');
-    router.replace('/onboarding');
+    resetAll();
+    router.navigate('/onboarding');
   }
 
   function fillAllCells() {

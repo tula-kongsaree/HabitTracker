@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -842,6 +844,7 @@ export default function TodayScreen() {
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setModalVisible(false)} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
           <ThemedText type="subtitle" style={styles.sheetTitle}>New Habit</ThemedText>
 
@@ -905,6 +908,7 @@ export default function TodayScreen() {
             <Text style={[styles.addBtnText, { color: scheme === 'dark' ? '#151718' : '#fff' }]}>Add Habit</Text>
           </Pressable>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
