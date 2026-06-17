@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -9,6 +10,7 @@ import {
   Text,
   TextInput,
   useColorScheme,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import Animated, {
@@ -378,6 +380,23 @@ export default function ChallengesScreen() {
   const inputBg = scheme === 'dark' ? '#2C2C2E' : '#FFFFFF';
   const sheetBg = scheme === 'dark' ? '#1C1C1E' : '#F2F2F7';
 
+  const { height: screenH } = useWindowDimensions();
+  const [keyboardH, setKeyboardH] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => setKeyboardH(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardH(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  // Fixed content height: title + input + duration label + duration row + habits label + create btn + padding + gaps
+  const FIXED_SHEET_H = 370;
+  const habitScrollMaxH = keyboardH > 0
+    ? Math.max(80, screenH - keyboardH - FIXED_SHEET_H)
+    : 260;
+
   const [modalVisible, setModalVisible] = useState(false);
   const [challengeName, setChallengeName] = useState('');
   const [selectedDuration, setSelectedDuration] = useState(7);
@@ -493,10 +512,11 @@ export default function ChallengesScreen() {
               <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Add habits on the Today tab first</ThemedText>
             ) : (
               <ScrollView
-                style={{ maxHeight: 220 }}
+                style={{ maxHeight: habitScrollMaxH }}
                 contentContainerStyle={styles.habitPickerList}
                 nestedScrollEnabled
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
                 {habits.map((h) => {
                   const sel = selectedHabitIds.includes(h.id);
@@ -543,7 +563,7 @@ const styles = StyleSheet.create({
   },
   startBtnText: { fontWeight: '700', fontSize: 16 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 14, maxHeight: '85%' },
+  sheet: { padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 14 },
   sheetTitle: { textAlign: 'center' },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16 },
   durationRow: { flexDirection: 'row', gap: 8 },
