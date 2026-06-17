@@ -44,12 +44,8 @@ function daysRemaining(challenge: Challenge): number {
   return Math.max(0, challenge.durationDays - elapsed - 1);
 }
 
-function isChallengeComplete(challenge: Challenge, progress: number): boolean {
-  const start = new Date(challenge.startDate + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const elapsed = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  return elapsed >= challenge.durationDays - 1 && progress >= 1;
+function isChallengeComplete(_challenge: Challenge, progress: number): boolean {
+  return progress >= 1;
 }
 
 // ─── SVG Progress Ring ─────────────────────────────────────────────────────────
@@ -102,7 +98,7 @@ function ProgressRing({ progress, size, color }: {
 // ─── Duration Wheel ────────────────────────────────────────────────────────────
 
 const DURATION_OPTS = [3, 5, 7, 10, 14, 21, 30, 45, 60, 90];
-const WHEEL_H = 48;
+const WHEEL_H = 60;
 
 function DurationWheel({ value, onChange, scheme }: {
   value: number; onChange: (v: number) => void; scheme: 'light' | 'dark';
@@ -130,7 +126,7 @@ function DurationWheel({ value, onChange, scheme }: {
       />
       <ScrollView
         ref={scrollRef}
-        style={{ height: WHEEL_H * 5 }}
+        style={{ height: WHEEL_H * 5, width: '100%' }}
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_H}
         decelerationRate="fast"
@@ -142,12 +138,12 @@ function DurationWheel({ value, onChange, scheme }: {
           const dist = Math.abs(i - centeredIdx);
           const isCentered = i === centeredIdx;
           return (
-            <View key={d} style={{ height: WHEEL_H, alignItems: 'center', justifyContent: 'center' }}>
+            <View key={d} style={{ height: WHEEL_H, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{
-                fontSize: isCentered ? 22 : 17,
+                fontSize: isCentered ? 24 : 18,
                 fontWeight: isCentered ? '700' : '400',
                 color: colors.text,
-                opacity: dist === 0 ? 1 : dist === 1 ? 0.5 : dist === 2 ? 0.2 : 0.08,
+                opacity: dist === 0 ? 1 : dist === 1 ? 0.6 : dist === 2 ? 0.3 : 0.12,
               }}>
                 {d} days
               </Text>
@@ -160,7 +156,7 @@ function DurationWheel({ value, onChange, scheme }: {
 }
 
 const dwStyles = StyleSheet.create({
-  wrapper: { position: 'relative', overflow: 'hidden', borderRadius: 12 },
+  wrapper: { position: 'relative', overflow: 'hidden', borderRadius: 12, width: '100%' },
   band: { position: 'absolute', left: 0, right: 0, height: WHEEL_H, borderTopWidth: 1, borderBottomWidth: 1, zIndex: 1 },
 });
 

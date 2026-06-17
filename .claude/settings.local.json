@@ -4,7 +4,9 @@
       "PowerShell(netstat *)",
       "PowerShell(Start-Process \"chrome\" \"http://localhost:8082\")",
       "PowerShell(& \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" \"http://localhost:8081\")",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "PowerShell(git push *)",
+      "PowerShell(Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd \"C:\\\\Users\\\\Omen\\\\Project\\\\HabitTracker\"; npx expo start')"
     ]
   }
 }
