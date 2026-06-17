@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(netstat *)",
+      "PowerShell(Start-Process \"chrome\" \"http://localhost:8082\")"
+    ]
+  }
+}
